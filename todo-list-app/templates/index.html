@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To-Do List</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        input, button {
+            margin: 5px;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            margin: 5px 0;
+        }
+        li.completed {
+            text-decoration: line-through;
+        }
+        .task-buttons {
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>To-Do List</h1>
+    <input type="text" id="new-task" placeholder="Add a new task">
+    <button onclick="addTask()">Add Task</button>
+    <ul id="task-list"></ul>
+
+    <script>
+        async function fetchTasks() {
+            const response = await fetch('/tasks');
+            const tasks = await response.json();
+            const taskList = document.getElementById('task-list');
+            taskList.innerHTML = '';
+            tasks.forEach(task => {
+                const li = document.createElement('li');
+                li.textContent = task.title;
+                li.dataset.id = task.id;
+                li.className = task.completed ? 'completed' : '';
+
+                const completeButton = document.createElement('button');
+                completeButton.textContent = task.completed ? 'Undo' : 'Complete';
+                completeButton.onclick = () => toggleTask(task.id);
+
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Delete';
+                deleteButton.onclick = () => deleteTask(task.id);
+
+                const buttonsDiv = document.createElement('div');
+                buttonsDiv.className = 'task-buttons';
+                buttonsDiv.appendChild(completeButton);
+                buttonsDiv.appendChild(deleteButton);
+
+                li.appendChild(buttonsDiv);
+                taskList.appendChild(li);
+            });
+        }
+
+        async function addTask() {
+            const newTask = document.getElementById('new-task').value;
+            const response = await fetch('/tasks', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ title: newTask })
+            });
+            if (response.status === 201) {
+                fetchTasks();
+                document.getElementById('new-task').value = '';
+            }
+        }
+
+        async function toggleTask(taskId) {
+            const task = document.querySelector(`li[data-id='${taskId}']`);
+            const completed = !task.className.includes('completed');
+            await fetch(`/tasks/${taskId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ completed })
+            });
+            fetchTasks();
+        }
+
+        async function deleteTask(taskId) {
+            await fetch(`/tasks/${taskId}`, {
+                method: 'DELETE'
+            });
+            fetchTasks();
+        }
+
+        fetchTasks();
+    </script>
+</body>
+</html>
